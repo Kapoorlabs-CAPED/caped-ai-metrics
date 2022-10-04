@@ -19,15 +19,6 @@ class ClassificationScore:
          self.location_pred = []
          self.location_gt = []
 
-         self.listtime_pred = []
-         self.listy_pred = []
-         self.listx_pred = []
-         self.listscore_pred = []
-
-         self.listtime_gt = []
-         self.listz_gt = []
-         self.listy_gt = []
-         self.listx_gt = []
          self.dicttree = {}
 
     def make_trees(self):
@@ -55,7 +46,7 @@ class ClassificationScore:
 
          dataset_gt  = pd.read_csv(self.groundtruth, delimiter = ',')
          for index, row in dataset_gt.iterrows():
-              T_gt = row[0]
+              T_gt = int(row[0])
               current_point = (row[1], row[2], row[3])
               tree, indices = self.dicttree[int(T_gt)]
               distance, nearest_location = tree.query(current_point)
@@ -75,7 +66,7 @@ class ClassificationScore:
             dataset_pred  = pd.read_csv(self.csv_pred, delimiter = ',')
 
             for index, row in dataset_pred.iterrows():
-              T_pred = row[0]
+              T_pred = int(row[0])
               current_point = (row[1], row[2], row[3])
               score = row[4]
               if score >= float(self.thresholdscore): 
@@ -121,9 +112,10 @@ class ClassificationScore:
         
                         tree = spatial.cKDTree(self.location_pred)
                         fn = 0
-                        for i in range(len(self.listtime_gt)):
+                        for i in range(len(self.location_gt)):
                             
-                            return_index = (int(self.listtime_gt[i]),int(self.listy_gt[i]), int(self.listx_gt[i]))
+                            return_index = (int(self.location_gt[i][0]),int(self.location_gt[i][1]),
+                                            int(self.location_gt[i][2]), int(self.location_gt[i][3]))
                             closestpoint = tree.query(return_index)
                             spacedistance, timedistance = TimedDistance(return_index, self.location_pred[closestpoint[1]])
 
@@ -132,18 +124,33 @@ class ClassificationScore:
 
                         return fn
                     
-                    
-    
-                    
-                    
                                 
+def EuclidMetric(x,y):
+    
+    return (x - y) * (x - y) 
+
+def MannhatanMetric(x,y):
+    
+    return np.abs(x - y)
+
+def EuclidSum(func):
+    
+    return float(np.sqrt( np.sum(func)))
+
+def ManhattanSum(func):
+    
+    return float(np.sum(func))
+
+def general_dist_func(metric):
+     
+     return lambda x,y : [metric(x[i], y[i]) for i in range(1,len(x))]
  
 def TimedDistance(pointA, pointB):
 
-    
-     spacedistance = float(np.sqrt( (pointA[1] - pointB[1] ) * (pointA[1] - pointB[1] ) + (pointA[2] - pointB[2] ) * (pointA[2] - pointB[2] )  ))
+     dist_func = general_dist_func(EuclidMetric)
+     
+     spacedistance = EuclidSum(dist_func(pointA, pointB))
      
      timedistance = float(np.abs(pointA[0] - pointB[0]))
-     
      
      return spacedistance, timedistance
