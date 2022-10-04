@@ -2,7 +2,102 @@ from scipy import spatial
 import pandas as pd
 import numpy as np
 from skimage import measure 
+from stardist.matching import matching_dataset
+from tqdm import tqdm
+from pathlib import Path
+import matplotlib.pyplot as plt
+import csv
+from tifffile import imread
+from skimage.metrics import structural_similarity as ssim
+from skimage.metrics import  normalized_root_mse as mse
+import seaborn as sns
+class SegmentationScore:
+    """
+    ground_truth: Input the directory contianing the ground truth label tif files
+    
+    predictions: Input the directory containing the predictions tif files (VollSeg/StarDist)
+    
+    results_dir: Input the name of the directory to store the results in
+    
+    pattern: In case the input images are not tif files, input the format here
+    
+    taus: The list of thresholds for computing the metrics 
+    
+    """
+    def __init__(self, ground_truth, predictions, results_dir, pattern = '*.tif', taus = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  ):
+        
+        
+        self.ground_truth = list(map( imread, list(Path(ground_truth).glob(pattern))))
+        self.predictions = list(map( imread, list(Path(predictions).glob(pattern))))
+        self.results_dir = results_dir
+        self.taus = taus 
+        
+        
+    def seg_stats(self):
+        
+        stats = [matching_dataset(self.ground_truth, self.predictions, thresh = t, show_progress = False) for t in tqdm(taus)]    
+        fig, (ax1,ax2) = plt.subplots(1,2, figsize=(25,10))
 
+        for m in ('precision', 'recall', 'accuracy', 'f1', 'mean_true_score', 'panoptic_quality'):
+            ax1.plot(self.taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
+        ax1.set_xlabel(r'IoU threshold $\tau$')
+        ax1.set_ylabel('Metric value')
+        ax1.grid()
+
+        for m in ('fp', 'tp', 'fn'):
+            ax2.plot(self.taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
+        ax2.set_xlabel(r'IoU threshold $\tau$')
+        ax2.set_ylabel('Number #')
+        ax2.grid()
+        ax2.legend()
+        plt.savefig(self.results_dir + 'AugSeg', dpi=300)
+        
+        stats_mse = []
+        stats_mse_name = self.results_dir + '/' + 'mean_squared_error'
+        mse_csv_writer = csv.writer(open(stats_mse_name + '.csv', 'a'))
+        mse_csv_writer.writerow(['mean_squared_error'])
+        for i in range(len(self.predictions)):
+            mse_score = mse(self.ground_truth[i], (self.predictions[i] > 0 ) )
+            stats_mse.append(mse_score)
+            mse_csv_writer.writerow([mse_score]) 
+            
+        stats_ssim = []   
+        stats_ssim_name = self.results_dir + '/' + 'structural_similarity_index'
+        ssim_csv_writer = csv.writer(open(stats_ssim_name + '.csv', 'a'))
+        ssim_csv_writer.writerow(['structural_similarity_index'])
+        for i in range(len(self.predictions)):
+            ssim_score = ssim(self.ground_truth[i], (self.predictions[i] > 0 ) )
+            stats_ssim.append(ssim_score)
+            ssim_csv_writer.writerow([ssim_score]) 
+        
+        df = pd.DataFrame(list(zip(stats_mse )), index = None,
+                                                    columns =["mean_squared_error"])
+        sns.set(style="whitegrid")
+        g = sns.violinplot(data=df, orient ='v')
+        fig = g.get_figure()
+        fig.savefig(self.results_dir  + "mean_squared_error.png", dpi=300)
+        
+        df = pd.DataFrame(list(zip(stats_ssim )), index = None,
+                                                    columns =["structural_similarity_index"])
+        sns.set(style="whitegrid")
+        g = sns.violinplot(data=df, orient ='v')
+        fig = g.get_figure()
+        fig.savefig(self.results_dir  + "structural_similarity_index.png", dpi=300)
+
+
+"""
+predictions: csv file of predictions as a list for different models
+
+groundtruth: csv file of ground truth as a list of TZYX co ordinates (approx/exact centroids)
+
+segimage: segmentation image to refine the ground truth locations
+
+thresholdscore: veto for score to count true, false positives and false negatives
+
+thresholdspace: tolerance for veto in space
+
+thresholdtime: tolerance for veto in time
+"""
 class ClassificationScore:
     
     def __init__(self, predictions, groundtruth, segimage, thresholdscore = 1 -  1.0E-6,  thresholdspace = 10, thresholdtime = 2):

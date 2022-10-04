@@ -1,1 +1,1 @@
-from .ScoreKeeper import ClassificationScore
+from .ScoreKeeper import ClassificationScore, SegmentationScore
