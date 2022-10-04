@@ -5,10 +5,12 @@ from skimage import measure
 
 class ClassificationScore:
     
-    def __init__(self, predictions, groundtruth, thresholdscore = 1 -  1.0E-6,  thresholdspace = 10, thresholdtime = 2):
+    def __init__(self, predictions, groundtruth, segimage, thresholdscore = 1 -  1.0E-6,  thresholdspace = 10, thresholdtime = 2):
 
          #A list of all the prediction csv files, path object
          self.predictions = predictions 
+         #Segmentation image for accurate metric evaluation
+         self.segimage = segimage
          #Approximate locations of the ground truth, Z co ordinate wil be ignored
          self.groundtruth = groundtruth
          self.thresholdscore = thresholdscore
@@ -23,9 +25,22 @@ class ClassificationScore:
          self.listscore_pred = []
 
          self.listtime_gt = []
+         self.listz_gt = []
          self.listy_gt = []
          self.listx_gt = []
+         self.dicttree = {}
 
+    def make_trees(self):
+        
+        for i in range(self.segimage.shape[0]):
+            #Make a ZYX image
+            currentimage = self.segimage[i,:,:,:]
+            props = measure.regionprops(currentimage)
+            indices = [prop.centroid for prop in props]
+            if len(indices) > 0:
+                tree = spatial.cKDTree(indices)
+                self.dicttree[int(i)] = [tree, indices] 
+             
 
     def model_scorer(self):
 
@@ -34,49 +49,38 @@ class ClassificationScore:
          FP = []
          FN = []
          GT = []
-         Score_thresh= []
          Pred = []
-         columns = ['Model Name', 'True Positive', 'False Positive', 'False Negative', 'Total Predictions', 'GT predictions', 'Score Threshold']
+         columns = ['Model Name', 'True Positive', 'False Positive', 'False Negative', 'Total Predictions', 'GT predictions']
          
 
          dataset_gt  = pd.read_csv(self.groundtruth, delimiter = ',')
-         T_gt = dataset_gt[dataset_gt.keys()[0]][0:]
-         Y_gt = dataset_gt[dataset_gt.keys()[2]][0:]
-         X_gt = dataset_gt[dataset_gt.keys()[3]][0:]
-
-         self.listtime_gt = T_gt.tolist()
-         self.listy_gt = Y_gt.tolist()
-         self.listx_gt = X_gt.tolist()
-         for i in range(len(self.listtime_gt)):
-
-              self.location_gt.append([self.listtime_gt[i], self.listy_gt[i], self.listx_gt[i]])
+         for index, row in dataset_gt.iterrows():
+              T_gt = row[0]
+              current_point = (row[1], row[2], row[3])
+              tree, indices = self.dicttree[int(T_gt)]
+              distance, nearest_location = tree.query(current_point)
+              nearest_location = (int(indices[nearest_location][0]), int(indices[nearest_location][1]), int(indices[nearest_location][2]))
+              self.location_gt.append([T_gt, nearest_location[0], nearest_location[1], nearest_location[2]])
+        
          
 
          for csv_pred in self.predictions:
             self.location_pred = []
-
             self.listtime_pred = []
             self.listy_pred = []
             self.listx_pred = []
             self.listscore_pred = []
-
             self.csv_pred = csv_pred
             name = self.csv_pred.stem
             dataset_pred  = pd.read_csv(self.csv_pred, delimiter = ',')
-            T_pred = dataset_pred[dataset_pred.keys()[0]][0:]
-            Y_pred = dataset_pred[dataset_pred.keys()[2]][0:]
-            X_pred = dataset_pred[dataset_pred.keys()[3]][0:]
-            Score_pred = dataset_pred[dataset_pred.keys()[4]][0:]
-        
-            self.listtime_pred = T_pred.tolist()
-            self.listy_pred = Y_pred.tolist()
-            self.listx_pred = X_pred.tolist()
-            self.listscore_pred = Score_pred.tolist()
 
-            for i in range(len(self.listtime_pred)):
-
-                if float(self.listscore_pred[i]) >= float(self.thresholdscore):   
-                    self.location_pred.append([int(self.listtime_pred[i]), int(self.listy_pred[i]), int(self.listx_pred[i])])
+            for index, row in dataset_pred.iterrows():
+              T_pred = row[0]
+              current_point = (row[1], row[2], row[3])
+              score = row[4]
+              if score >= float(self.thresholdscore): 
+                  self.location_pred.append([int(T_pred), int(row[1]), int(row[2]), int(row[3])])
+              
             tp, fn, fp, pred, gt = self.TruePositives()
             
             Name.append(name)
@@ -85,8 +89,7 @@ class ClassificationScore:
             FP.append(fp)
             GT.append(gt)
             Pred.append(pred)
-            Score_thresh.append(self.thresholdscore)
-         data = list(zip(Name, TP, FP, FN, Pred, GT, Score_thresh))
+         data = list(zip(Name, TP, FP, FN, Pred, GT))
 
          df = pd.DataFrame(data, columns=columns)
          df.to_csv(str(self.csv_pred.parent) + '_Model_Accuracy' + '.csv')
