@@ -103,7 +103,7 @@ class ClassificationScore:
     def __init__(self, predictions, groundtruth, segimage, thresholdscore = 1 -  1.0E-6,  thresholdspace = 10, thresholdtime = 2):
 
          #A list of all the prediction csv files, path object
-         self.predictions = predictions 
+         self.predictions = list(Path(predictions).glob('*.csv')) 
          #Segmentation image for accurate metric evaluation
          self.segimage = segimage
          #Approximate locations of the ground truth, Z co ordinate wil be ignored
