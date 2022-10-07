@@ -116,7 +116,7 @@ class ClassificationScore:
 
          self.dicttree = {}
 
-    def make_trees(self):
+    def _make_trees(self):
         
         for i in range(self.segimage.shape[0]):
             #Make a ZYX image
@@ -130,6 +130,7 @@ class ClassificationScore:
 
     def model_scorer(self):
 
+         self._make_trees()
          Name = []
          TP = []
          FP = []
@@ -167,7 +168,7 @@ class ClassificationScore:
               if score >= float(self.thresholdscore): 
                   self.location_pred.append([int(T_pred), int(row[1]), int(row[2]), int(row[3])])
               
-            tp, fn, fp, pred, gt = self.TruePositives()
+            tp, fn, fp, pred, gt = self._TruePositives()
             
             Name.append(name)
             TP.append(tp)
@@ -183,7 +184,7 @@ class ClassificationScore:
 
      
 
-    def TruePositives(self):
+    def _TruePositives(self):
 
             tp = 0
             fp = 0
@@ -192,18 +193,18 @@ class ClassificationScore:
                 
                 return_index = self.location_pred[i]
                 closestpoint = tree.query(return_index)
-                spacedistance, timedistance = TimedDistance(return_index, self.location_gt[closestpoint[1]])
+                spacedistance, timedistance = _TimedDistance(return_index, self.location_gt[closestpoint[1]])
                     
                 if spacedistance < self.thresholdspace and timedistance < self.thresholdtime:
                         tp  = tp + 1
                 else:
                         fp = fp + 1        
             
-            fn = self.FalseNegatives()
+            fn = self._FalseNegatives()
             return tp, fn, fp, len(self.location_pred), len(self.location_gt)
         
 
-    def FalseNegatives(self):
+    def _FalseNegatives(self):
         
                         tree = spatial.cKDTree(self.location_pred)
                         fn = 0
@@ -212,7 +213,7 @@ class ClassificationScore:
                             return_index = (int(self.location_gt[i][0]),int(self.location_gt[i][1]),
                                             int(self.location_gt[i][2]), int(self.location_gt[i][3]))
                             closestpoint = tree.query(return_index)
-                            spacedistance, timedistance = TimedDistance(return_index, self.location_pred[closestpoint[1]])
+                            spacedistance, timedistance = _TimedDistance(return_index, self.location_pred[closestpoint[1]])
 
                             if spacedistance > self.thresholdspace or timedistance > self.thresholdtime:
                                     fn  = fn + 1
@@ -220,31 +221,31 @@ class ClassificationScore:
                         return fn
                     
                                 
-def EuclidMetric(x,y):
+def _EuclidMetric(x,y):
     
     return (x - y) * (x - y) 
 
-def MannhatanMetric(x,y):
+def _MannhatanMetric(x,y):
     
     return np.abs(x - y)
 
-def EuclidSum(func):
+def _EuclidSum(func):
     
     return float(np.sqrt( np.sum(func)))
 
-def ManhattanSum(func):
+def _ManhattanSum(func):
     
     return float(np.sum(func))
 
-def general_dist_func(metric):
+def _general_dist_func(metric):
      
      return lambda x,y : [metric(x[i], y[i]) for i in range(1,len(x))]
  
-def TimedDistance(pointA, pointB):
+def _TimedDistance(pointA, pointB):
 
-     dist_func = general_dist_func(EuclidMetric)
+     dist_func = _general_dist_func(_EuclidMetric)
      
-     spacedistance = EuclidSum(dist_func(pointA, pointB))
+     spacedistance = _EuclidSum(dist_func(pointA, pointB))
      
      timedistance = float(np.abs(pointA[0] - pointB[0]))
      
