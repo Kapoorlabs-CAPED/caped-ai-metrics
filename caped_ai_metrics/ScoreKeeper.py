@@ -35,7 +35,7 @@ class SegmentationScore:
         
     def seg_stats(self):
         
-        stats = [matching_dataset(self.ground_truth, self.predictions, thresh = t, show_progress = False) for t in tqdm(taus)]    
+        stats = [matching_dataset(self.ground_truth, self.predictions, thresh = t, show_progress = False) for t in tqdm(self.taus)]    
         fig, (ax1,ax2) = plt.subplots(1,2, figsize=(25,10))
 
         for m in ('precision', 'recall', 'accuracy', 'f1', 'mean_true_score', 'panoptic_quality'):
@@ -137,7 +137,8 @@ class ClassificationScore:
 
     def model_scorer(self):
 
-         self._make_trees()
+         if self.segimage is not None:  
+            self._make_trees()
          Name = []
          TP = []
          FP = []
@@ -151,11 +152,13 @@ class ClassificationScore:
          for index, row in dataset_gt.iterrows():
               T_gt = int(row[0])
               current_point = (row[1], row[2], row[3])
-              tree, indices = self.dicttree[int(T_gt)]
-              distance, nearest_location = tree.query(current_point)
-              nearest_location = (int(indices[nearest_location][0]), int(indices[nearest_location][1]), int(indices[nearest_location][2]))
-              self.location_gt.append([T_gt, nearest_location[0], nearest_location[1], nearest_location[2]])
-        
+              if self.segimage is not None:                
+                tree, indices = self.dicttree[int(T_gt)]
+                distance, nearest_location = tree.query(current_point)
+                nearest_location = (int(indices[nearest_location][0]), int(indices[nearest_location][1]), int(indices[nearest_location][2]))
+                self.location_gt.append([T_gt, nearest_location[0], nearest_location[1], nearest_location[2]])
+              else:
+                self.location_gt.append([int(row[0]),int(row[1]),int(row[2]),int(row[3])])  
          
 
          for csv_pred in self.predictions:
