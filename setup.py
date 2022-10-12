@@ -18,7 +18,8 @@ setup(
     long_description = long_description,
     long_description_content_type='text/markdown',
     install_required=[
-        'oneat'
+        'oneat',
+        'seaborn'
                       ], 
     
     packages = find_packages(),

@@ -1,8 +1,8 @@
 README.md
 setup.py
-caped-ai-metrics/ScoreKeeper.py
-caped-ai-metrics/__init__.py
-caped-ai-metrics/_version.py
+caped_ai_metrics/ScoreKeeper.py
+caped_ai_metrics/__init__.py
+caped_ai_metrics/_version.py
 caped_ai_metrics.egg-info/PKG-INFO
 caped_ai_metrics.egg-info/SOURCES.txt
 caped_ai_metrics.egg-info/dependency_links.txt

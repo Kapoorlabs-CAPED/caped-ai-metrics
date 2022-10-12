@@ -1,9 +1,12 @@
 Metadata-Version: 2.1
 Name: caped-ai-metrics
-Version: 1.0.0
+Version: 1.0.1
 Summary: Metric computation toolkit for segmentation and classification tasks
+Home-page: UNKNOWN
 Author: Varun Kapoor
 Author-email: randomaccessiblekapoor@gmail.com
+License: UNKNOWN
+Platform: UNKNOWN
 Classifier: Development Status :: 3 - Alpha
 Classifier: Natural Language :: English
 Classifier: License :: OSI Approved :: MIT License
@@ -14,3 +17,5 @@ Description-Content-Type: text/markdown
 
 # caped-ai-metrics
 Metrics for segmentation and classification
+
+

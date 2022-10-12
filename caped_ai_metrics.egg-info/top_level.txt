@@ -1,1 +1,1 @@
-caped-ai-metrics
+caped_ai_metrics
