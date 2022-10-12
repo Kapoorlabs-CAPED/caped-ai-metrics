@@ -225,7 +225,7 @@ class ClassificationScore:
                             return_index = (int(self.location_gt[i][0]),int(self.location_gt[i][1]),
                                             int(self.location_gt[i][2]), int(self.location_gt[i][3]))
                             closestpoint = tree.query(return_index)
-                            spacedistance, timedistance = _TimedDistance(return_index, self.location_pred[closestpoint[1]])
+                            spacedistance, timedistance = _TimedDistance(return_index, self.location_pred[closestpoint[1]], self.ignorez)
 
                             if spacedistance > self.thresholdspace or timedistance > self.thresholdtime:
                                     fn  = fn + 1
