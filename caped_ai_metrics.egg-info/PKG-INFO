@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: caped-ai-metrics
-Version: 1.0.3
+Version: 1.0.4
 Summary: Metric computation toolkit for segmentation and classification tasks
 Author: Varun Kapoor
 Author-email: randomaccessiblekapoor@gmail.com

@@ -100,7 +100,13 @@ thresholdtime: tolerance for veto in time
 """
 class ClassificationScore:
     
-    def __init__(self, predictions, groundtruth, segimage, thresholdscore = 1 -  1.0E-6,  thresholdspace = 10, thresholdtime = 2):
+    def __init__(self, predictions, 
+                 groundtruth, 
+                 segimage, 
+                 thresholdscore = 1 -  1.0E-6,  
+                 thresholdspace = 20, 
+                 thresholdtime = 4, 
+                 ignorez= False):
 
          #A list of all the prediction csv files, path object
          self.predictions = list(Path(predictions).glob('*.csv')) 
@@ -111,6 +117,7 @@ class ClassificationScore:
          self.thresholdscore = thresholdscore
          self.thresholdspace = thresholdspace 
          self.thresholdtime = thresholdtime
+         self.ignorez = ignorez
          self.location_pred = []
          self.location_gt = []
 
@@ -194,7 +201,7 @@ class ClassificationScore:
                 
                 return_index = self.location_pred[i]
                 closestpoint = tree.query(return_index)
-                spacedistance, timedistance = _TimedDistance(return_index, self.location_gt[closestpoint[1]])
+                spacedistance, timedistance = _TimedDistance(return_index, self.location_gt[closestpoint[1]], self.ignorez)
                     
                 if spacedistance < self.thresholdspace and timedistance < self.thresholdtime:
                         tp  = tp + 1
@@ -223,11 +230,11 @@ class ClassificationScore:
                         return fn
                     
                                 
-def _EuclidMetric(x,y):
+def _EuclidMetric(x: float,y: float):
     
     return (x - y) * (x - y) 
 
-def _MannhatanMetric(x,y):
+def _MannhatanMetric(x: float,y: float):
     
     return np.abs(x - y)
 
@@ -239,13 +246,17 @@ def _ManhattanSum(func):
     
     return float(np.sum(func))
 
-def _general_dist_func(metric):
+def _general_dist_func(metric, ignorez: bool):
      
-     return lambda x,y : [metric(x[i], y[i]) for i in range(1,len(x))]
+     if ignorez:
+         start_dim = 2
+     else:
+         start_dim = 1    
+     return lambda x,y : [metric(x[i], y[i]) for i in range(start_dim,len(x))]
  
-def _TimedDistance(pointA, pointB):
+def _TimedDistance(pointA: tuple, pointB: tuple, ignorez: bool):
 
-     dist_func = _general_dist_func(_EuclidMetric)
+     dist_func = _general_dist_func(_EuclidMetric, ignorez)
      
      spacedistance = _EuclidSum(dist_func(pointA, pointB))
      
