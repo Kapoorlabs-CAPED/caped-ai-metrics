@@ -180,6 +180,7 @@ class ClassificationScore:
 
          df = pd.DataFrame(data, columns=columns)
          df.to_csv(str(self.csv_pred.parent) + '_Model_Accuracy' + '.csv')
+         print(df)
          return df
 
      
