@@ -210,7 +210,7 @@ class ClassificationScore:
                         tp  = tp + 1
                 else:
                         fp = fp + 1        
-            tp = tp / len(self.location_pred) * 100
+            tp = tp / len(self.location_gt) * 100
             fp = fp / len(self.location_pred) * 100
             fn = self._FalseNegatives()
             return tp, fn, fp, len(self.location_pred), len(self.location_gt)
