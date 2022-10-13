@@ -103,9 +103,10 @@ class ClassificationScore:
     def __init__(self, predictions, 
                  groundtruth, 
                  segimage = None, 
-                 thresholdscore = 1 -  1.0E-6,  
+                 thresholdscore = 1 -  1.0E-4,  
                  thresholdspace = 20, 
                  thresholdtime = 4, 
+                 metric = 'Euclid',
                  ignorez= False):
 
          #A list of all the prediction csv files, path object
@@ -121,6 +122,7 @@ class ClassificationScore:
          self.thresholdspace = thresholdspace 
          self.thresholdtime = thresholdtime
          self.ignorez = ignorez
+         self.metric = metric
          self.location_pred = []
          self.location_gt = []
 
@@ -207,7 +209,7 @@ class ClassificationScore:
                 
                 return_index = self.location_pred[i]
                 closestpoint = tree.query(return_index)
-                spacedistance, timedistance = _TimedDistance(return_index, self.location_gt[closestpoint[1]], self.ignorez)
+                spacedistance, timedistance = _TimedDistance(return_index, self.location_gt[closestpoint[1]], self.metric, self.ignorez)
                     
                 if spacedistance < self.thresholdspace and timedistance < self.thresholdtime:
                         tp  = tp + 1
@@ -228,7 +230,7 @@ class ClassificationScore:
                             return_index = (int(self.location_gt[i][0]),int(self.location_gt[i][1]),
                                             int(self.location_gt[i][2]), int(self.location_gt[i][3]))
                             closestpoint = tree.query(return_index)
-                            spacedistance, timedistance = _TimedDistance(return_index, self.location_pred[closestpoint[1]], self.ignorez)
+                            spacedistance, timedistance = _TimedDistance(return_index, self.location_pred[closestpoint[1]], self.metric, self.ignorez)
 
                             if spacedistance > self.thresholdspace or timedistance > self.thresholdtime:
                                     fn  = fn + 1
@@ -260,11 +262,17 @@ def _general_dist_func(metric, ignorez: bool):
          start_dim = 1    
      return lambda x,y : [metric(x[i], y[i]) for i in range(start_dim,len(x))]
  
-def _TimedDistance(pointA: tuple, pointB: tuple, ignorez: bool):
-
-     dist_func = _general_dist_func(_EuclidMetric, ignorez)
+def _TimedDistance(pointA: tuple, pointB: tuple, metric, ignorez: bool):
      
-     spacedistance = _EuclidSum(dist_func(pointA, pointB))
+     if metric == 'Euclid':
+        dist_func = _general_dist_func(_EuclidMetric, ignorez)
+        spacedistance = _EuclidSum(dist_func(pointA, pointB))
+     if metric == 'Manhattan':
+        dist_func = _general_dist_func(_MannhatanMetric, ignorez)
+        spacedistance = _ManhattanSum(dist_func(pointA, pointB))    
+     else:
+        dist_func = _general_dist_func(_EuclidMetric, ignorez)
+        spacedistance = _EuclidSum(dist_func(pointA, pointB))   
      
      timedistance = float(np.abs(pointA[0] - pointB[0]))
      
