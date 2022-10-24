@@ -164,8 +164,10 @@ class ClassificationScore:
                 nearest_location = (int(indices[nearest_location][0]), int(indices[nearest_location][1]), int(indices[nearest_location][2]))
                 self.location_gt.append([T_gt, nearest_location[0], nearest_location[1], nearest_location[2]])
               else:
-                self.location_gt.append([int(row[0]),int(row[1]),int(row[2]),int(row[3])])  
-         
+                self.location_gt.append([int(row[0]),int(row[1]),int(row[2]),int(row[3])]) 
+                 
+         gt_dataframe = pd.DataFrame(self.location_gt)
+         gt_dataframe.to_csv(str(self.csv_pred.parent) + '_GT_Accuracy' + '.csv')
 
          for csv_pred in self.predictions:
             self.location_pred = []
