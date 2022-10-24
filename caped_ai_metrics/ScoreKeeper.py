@@ -100,14 +100,15 @@ thresholdtime: tolerance for veto in time
 """
 class ClassificationScore:
     
-    def __init__(self, predictions, 
-                 groundtruth, 
-                 segimage = None, 
-                 thresholdscore = 1 -  1.0E-4,  
-                 thresholdspace = 20, 
-                 thresholdtime = 4, 
-                 metric = 'Euclid',
-                 ignorez= False):
+    def __init__(self, 
+                 predictions: str, 
+                 groundtruth: str, 
+                 segimage: np.ndarray = None, 
+                 thresholdscore: float = 1 -  1.0E-4,  
+                 thresholdspace: int = 20, 
+                 thresholdtime: int = 4, 
+                 metric: str = 'Euclid',
+                 ignorez: bool = False):
 
          #A list of all the prediction csv files, path object
          self.predictions = list(Path(predictions).glob('*.csv')) 
@@ -192,8 +193,10 @@ class ClassificationScore:
             GT.append(gt)
             Pred.append(pred)
          data = list(zip(Name, TP, FP, FN, Pred, GT))
-
+         data = sorted(data, key = lambda x: x[1])
+         data = sorted(data, key = lambda x: x[3], reverse = True)
          df = pd.DataFrame(data, columns=columns)
+         
          df.to_csv(str(self.csv_pred.parent) + '_Model_Accuracy' + '.csv')
          print(df)
          return df
