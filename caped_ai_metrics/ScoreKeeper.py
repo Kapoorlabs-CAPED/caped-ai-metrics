@@ -193,8 +193,9 @@ class ClassificationScore:
             GT.append(gt)
             Pred.append(pred)
          data = list(zip(Name, TP, FP, FN, Pred, GT))
-         data = sorted(data, key = lambda x: x[1])
-         data = sorted(data, key = lambda x: x[3], reverse = True)
+         data = sorted(data, key = lambda x: x[1], reverse = True)
+         data = sorted(data, key = lambda x: x[3])
+         
          df = pd.DataFrame(data, columns=columns)
          
          df.to_csv(str(self.csv_pred.parent) + '_Model_Accuracy' + '.csv')
