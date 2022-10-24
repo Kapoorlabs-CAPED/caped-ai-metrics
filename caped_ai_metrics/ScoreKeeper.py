@@ -193,8 +193,7 @@ class ClassificationScore:
             GT.append(gt)
             Pred.append(pred)
          data = list(zip(Name, TP, FP, FN, Pred, GT))
-         data = sorted(data, key = lambda x: x[1], reverse = True)
-         data = sorted(data, key = lambda x: x[3])
+         data = sorted(data, key = lambda x: x[-2])
          
          df = pd.DataFrame(data, columns=columns)
          
