@@ -167,7 +167,7 @@ class ClassificationScore:
                 self.location_gt.append([int(row[0]),int(row[1]),int(row[2]),int(row[3])]) 
                  
          gt_dataframe = pd.DataFrame(self.location_gt)
-         gt_dataframe.to_csv( self.groundtruth + 'GT_Accuracy' + '.csv')
+         gt_dataframe.to_csv( Path(self.groundtruth).parent + 'GT_Accuracy' + '.csv', index  = False)
 
          for csv_pred in self.predictions:
             self.location_pred = []
