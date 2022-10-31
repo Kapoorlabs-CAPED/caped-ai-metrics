@@ -157,7 +157,7 @@ class ClassificationScore:
             for index, row in dataset_pred.iterrows():
               T_pred = int(row[0])
               current_point = (row[1], row[2], row[3])
-              if len(row) >= 4:
+              if len(row) > 4:
                 score = row[4]
               else:
                   score = 1  
