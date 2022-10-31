@@ -90,7 +90,6 @@ predictions: csv file of predictions as a list for different models
 
 groundtruth: csv file of ground truth as a list of TZYX co ordinates (approx/exact centroids)
 
-segimage: segmentation image to refine the ground truth locations
 
 thresholdscore: veto for score to count true, false positives and false negatives
 
@@ -103,7 +102,6 @@ class ClassificationScore:
     def __init__(self, 
                  predictions: str, 
                  groundtruth: str, 
-                 segimage: np.ndarray = None, 
                  thresholdscore: float = 1 -  1.0E-4,  
                  thresholdspace: int = 20, 
                  thresholdtime: int = 4, 
@@ -112,11 +110,7 @@ class ClassificationScore:
 
          #A list of all the prediction csv files, path object
          self.predictions = list(Path(predictions).glob('*.csv')) 
-         #Segmentation image for accurate metric evaluation
-         if segimage is not None:
-           self.segimage = imread(segimage)
-         else:
-           self.segimage = None    
+           
          #Approximate locations of the ground truth, Z co ordinate wil be ignored
          self.groundtruth = groundtruth
          self.thresholdscore = thresholdscore
@@ -129,22 +123,12 @@ class ClassificationScore:
 
          self.dicttree = {}
 
-    def _make_trees(self):
-        
-        for i in range(self.segimage.shape[0]):
-            #Make a ZYX image
-            currentimage = self.segimage[i,:,:,:]
-            props = measure.regionprops(currentimage)
-            indices = [prop.centroid for prop in props]
-            if len(indices) > 0:
-                tree = spatial.cKDTree(indices)
-                self.dicttree[int(i)] = [tree, indices] 
+ 
              
 
     def model_scorer(self):
 
-         if self.segimage is not None:  
-            self._make_trees()
+         
          Name = []
          TP = []
          FP = []
@@ -156,18 +140,9 @@ class ClassificationScore:
 
          dataset_gt  = pd.read_csv(self.groundtruth, delimiter = ',')
          for index, row in dataset_gt.iterrows():
-              T_gt = int(row[0])
-              current_point = (row[1], row[2], row[3])
-              if self.segimage is not None:                
-                tree, indices = self.dicttree[int(T_gt)]
-                distance, nearest_location = tree.query(current_point)
-                nearest_location = (int(indices[nearest_location][0]), int(indices[nearest_location][1]), int(indices[nearest_location][2]))
-                self.location_gt.append([T_gt, nearest_location[0], nearest_location[1], nearest_location[2]])
-              else:
-                self.location_gt.append([int(row[0]),int(row[1]),int(row[2]),int(row[3])]) 
+              self.location_gt.append([int(row[0]),int(row[1]),int(row[2]),int(row[3])]) 
                  
-         gt_dataframe = pd.DataFrame(self.location_gt)
-         gt_dataframe.to_csv( Path(self.groundtruth).parent.as_posix() + 'GT_Accuracy' + '.csv', index  = False)
+        
 
          for csv_pred in self.predictions:
             self.location_pred = []
@@ -182,7 +157,10 @@ class ClassificationScore:
             for index, row in dataset_pred.iterrows():
               T_pred = int(row[0])
               current_point = (row[1], row[2], row[3])
-              score = row[4]
+              if len(row) >= 4:
+                score = row[4]
+              else:
+                  score = 1  
               if score >= float(self.thresholdscore): 
                   self.location_pred.append([int(T_pred), int(row[1]), int(row[2]), int(row[3])])
               
