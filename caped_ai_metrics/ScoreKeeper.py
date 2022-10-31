@@ -217,7 +217,7 @@ class ClassificationScore:
 
                             if spacedistance > self.thresholdspace or timedistance > self.thresholdtime:
                                     fn  = fn + 1
-                        fn = fn/len(self.location_gt) * 100
+                        fn = fn/len(self.location_pred) * 100
                         return fn
                     
                                 
