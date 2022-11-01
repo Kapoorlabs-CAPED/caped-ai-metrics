@@ -177,7 +177,7 @@ class ClassificationScore:
          
          df = pd.DataFrame(data, columns=columns)
          
-         df.to_csv(str(self.csv_pred.parent) + '_Model_Accuracy' + '.csv')
+         df.to_csv(str(self.csv_pred.parent) + '_model_accuracy' + '.csv')
          print(df)
          return df
 
@@ -206,18 +206,18 @@ class ClassificationScore:
 
     def _FalseNegatives(self):
         
-                        tree = spatial.cKDTree(self.location_pred)
-                        fn = 0
-                        for i in range(len(self.location_gt)):
+                        tree = spatial.cKDTree(self.location_gt)
+                        fn = len(self.location_pred)
+                        for i in range(len(self.location_pred)):
                             
-                            return_index = (int(self.location_gt[i][0]),int(self.location_gt[i][1]),
-                                            int(self.location_gt[i][2]), int(self.location_gt[i][3]))
+                            return_index = (int(self.location_pred[i][0]),int(self.location_pred[i][1]),
+                                            int(self.location_pred[i][2]), int(self.location_pred[i][3]))
                             closestpoint = tree.query(return_index)
-                            spacedistance, timedistance = _TimedDistance(return_index, self.location_pred[closestpoint[1]], self.metric, self.ignorez)
+                            spacedistance, timedistance = _TimedDistance(return_index, self.location_gt[closestpoint[1]], self.metric, self.ignorez)
 
                             if spacedistance > self.thresholdspace or timedistance > self.thresholdtime:
-                                    fn  = fn + 1
-                        fn = fn/len(self.location_gt) * 100
+                                    fn  = fn - 1
+                        fn = fn/len(self.location_pred) * 100
                         return fn
                     
                                 
