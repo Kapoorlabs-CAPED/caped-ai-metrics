@@ -207,7 +207,7 @@ class ClassificationScore:
     def _FalseNegatives(self):
         
                         tree = spatial.cKDTree(self.location_gt)
-                        fn = len(self.location_pred)
+                        fn = 0
                         for i in range(len(self.location_pred)):
                             
                             return_index = (int(self.location_pred[i][0]),int(self.location_pred[i][1]),
@@ -216,7 +216,7 @@ class ClassificationScore:
                             spacedistance, timedistance = _TimedDistance(return_index, self.location_gt[closestpoint[1]], self.metric, self.ignorez)
 
                             if spacedistance > self.thresholdspace or timedistance > self.thresholdtime:
-                                    fn  = fn - 1
+                                    fn  = fn + 1
                         fn = fn/len(self.location_pred) * 100
                         return fn
                     
