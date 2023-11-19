@@ -137,8 +137,11 @@ class ClassificationScore:
          FP = []
          FN = []
          GT = []
+         Precision = []
+         Recall = []
+         F1 = []
          Pred = []
-         columns = ['Model Name', 'True Positive', 'False Positive', 'False Negative', 'Total Predictions', 'GT predictions']
+         columns = ['Model Name', 'True Positive', 'False Positive', 'False Negative', 'Total Predictions', 'GT predictions', 'Precision', 'Recall', 'F1']
          
 
          dataset_gt  = pd.read_csv(self.groundtruth, delimiter = ',')
@@ -172,7 +175,13 @@ class ClassificationScore:
             FP.append(fp)
             GT.append(gt)
             Pred.append(pred)
-         data = list(zip(Name, TP, FP, FN, Pred, GT))
+            precision = tp/(tp + fp) if (tp + fp) > 0 else 0
+            recall = tp/(tp + fn) if (tp + fn) > 0 else 0
+            Precision.append(precision)
+            Recall.append(recall)
+            F1.append(2 * (precision * recall)/(precision + recall))
+
+         data = list(zip(Name, TP, FP, FN, Pred, GT, Precision, Recall, F1))
          data = sorted(data, key = lambda x: x[-2])
          df = pd.DataFrame(data, columns=columns)
          df.to_csv(str(self.csv_pred.parent) + '_model_accuracy' + '.csv')
