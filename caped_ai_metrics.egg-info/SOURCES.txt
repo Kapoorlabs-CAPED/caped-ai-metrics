@@ -1,3 +1,4 @@
+LICENSE.txt
 README.md
 setup.py
 caped_ai_metrics/ScoreKeeper.py

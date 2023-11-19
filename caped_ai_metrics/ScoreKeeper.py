@@ -111,7 +111,8 @@ class ClassificationScore:
          #A list of all the prediction csv files, path object
          if isinstance(predictions, str):
              self.predictions = [Path(predictions)]
-         self.predictions = list(Path(predictions).glob('*.csv')) 
+         else:
+             self.predictions = list(Path(predictions).glob('*.csv')) 
            
          #Approximate locations of the ground truth, Z co ordinate wil be ignored
          self.groundtruth = groundtruth
@@ -180,7 +181,6 @@ class ClassificationScore:
          df = pd.DataFrame(data, columns=columns)
          
          df.to_csv(str(self.csv_pred.parent) + '_model_accuracy' + '.csv')
-         print(df)
          return df
 
      
