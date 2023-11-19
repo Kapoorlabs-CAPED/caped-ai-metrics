@@ -102,9 +102,9 @@ class ClassificationScore:
     def __init__(self, 
                  predictions: str, 
                  groundtruth: str, 
-                 thresholdscore: float = 1 -  1.0E-4,  
+                 thresholdscore: float = 1 -  1.0E-8,  
                  thresholdspace: int = 20, 
-                 thresholdtime: int = 4, 
+                 thresholdtime: int = 2, 
                  metric: str = 'Euclid',
                  ignorez: bool = False):
 
@@ -142,11 +142,9 @@ class ClassificationScore:
          
 
          dataset_gt  = pd.read_csv(self.groundtruth, delimiter = ',')
-         for index, row in dataset_gt.iterrows():
-              self.location_gt.append([int(row[0]),int(row[1]),int(row[2]),int(row[3])]) 
+         self.location_gt = dataset_gt.iloc[:, :4].astype(int).values.tolist() 
                  
         
-
          for csv_pred in self.predictions:
             self.location_pred = []
             self.listtime_pred = []
@@ -156,17 +154,16 @@ class ClassificationScore:
             self.csv_pred = csv_pred
             name = self.csv_pred.stem
             dataset_pred  = pd.read_csv(self.csv_pred, delimiter = ',')
-
+            
             for index, row in dataset_pred.iterrows():
-              T_pred = int(row[0])
-              current_point = (row[1], row[2], row[3])
-              if len(row) > 4:
-                score = row[4]
-              else:
-                  score = 1  
-              if score >= float(self.thresholdscore): 
-                  self.location_pred.append([int(T_pred), int(row[1]), int(row[2]), int(row[3])])
-              
+                T_pred = int(row.iloc[0])
+                current_point = (row.iloc[1], row.iloc[2], row.iloc[3])
+                score = row.iloc[4] if len(row) > 4 else 1
+                
+                if score >= float(self.thresholdscore): 
+                    self.location_pred.append([int(T_pred), int(row.iloc[1]), int(row.iloc[2]), int(row.iloc[3])])
+                    self.listtime_pred.append(int(T_pred))   
+                       
             tp, fn, fp, pred, gt = self._TruePositives()
             
             Name.append(name)
@@ -177,9 +174,7 @@ class ClassificationScore:
             Pred.append(pred)
          data = list(zip(Name, TP, FP, FN, Pred, GT))
          data = sorted(data, key = lambda x: x[-2])
-         
          df = pd.DataFrame(data, columns=columns)
-         
          df.to_csv(str(self.csv_pred.parent) + '_model_accuracy' + '.csv')
          return df
 
@@ -200,8 +195,8 @@ class ClassificationScore:
                         tp  = tp + 1
                 else:
                         fp = fp + 1        
-            tp = tp / len(self.location_pred) * 100
-            fp = fp / len(self.location_pred) * 100
+            tp = tp 
+            fp = fp 
             fn = self._FalseNegatives()
             return tp, fn, fp, len(self.location_pred), len(self.location_gt)
         
@@ -219,7 +214,7 @@ class ClassificationScore:
 
                             if spacedistance > self.thresholdspace or timedistance > self.thresholdtime:
                                     fn  = fn + 1
-                        fn = fn/len(self.location_gt) * 100
+                        fn = fn
                         return fn
                     
                                 
