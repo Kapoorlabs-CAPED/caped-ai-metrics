@@ -26,14 +26,16 @@ class SegmentationScore:
     taus: The list of thresholds for computing the metrics 
     
     """
-    def __init__(self, ground_truth_dir, predictions_dir, results_dir, pattern='*.tif', taus=[0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]):
+    def __init__(self, ground_truth_dir, predictions_dir, results_dir, pattern='.tif', taus=[0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]):
+
+        
         self.ground_truth = natsorted([imread(os.path.join(ground_truth_dir, file)) for file in os.listdir(ground_truth_dir) if file.endswith(pattern)])
         self.predictions = natsorted([imread(os.path.join(predictions_dir, file)) for file in os.listdir(predictions_dir) if file.endswith(pattern)])
         self.results_dir = results_dir
         self.taus = taus
             
     def seg_stats(self):
-        
+        print(self.ground_truth[0].shape)
         stats_mse = []
         stats_mse_name = self.results_dir + '/' + 'mean_squared_error'
         mse_csv_writer = csv.writer(open(stats_mse_name + '.csv', 'a'))
