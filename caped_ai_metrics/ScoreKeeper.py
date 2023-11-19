@@ -109,6 +109,8 @@ class ClassificationScore:
                  ignorez: bool = False):
 
          #A list of all the prediction csv files, path object
+         if isinstance(predictions, str):
+             self.predictions = [Path(predictions)]
          self.predictions = list(Path(predictions).glob('*.csv')) 
            
          #Approximate locations of the ground truth, Z co ordinate wil be ignored
