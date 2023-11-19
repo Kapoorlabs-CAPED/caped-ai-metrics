@@ -26,76 +26,50 @@ class SegmentationScore:
     taus: The list of thresholds for computing the metrics 
     
     """
-    def __init__(self, ground_truth_dir, predictions_dir, results_dir, pattern='.tif', taus=[0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]):
+    def __init__(self, ground_truth_dir, predictions_dir, results_dir, acceptable_formats = [".tif", ".TIFF", ".TIF", ".png"], taus=[ 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]):
 
-        
-        self.ground_truth = natsorted([imread(os.path.join(ground_truth_dir, file)) for file in os.listdir(ground_truth_dir) if file.endswith(pattern)])
-        self.predictions = natsorted([imread(os.path.join(predictions_dir, file)) for file in os.listdir(predictions_dir) if file.endswith(pattern)])
+        self.ground_truth = []
+        self.predictions = []
+
+        sorted_ground_truth = natsorted(os.listdir(ground_truth_dir))
+        for fname in sorted_ground_truth:
+            if any(fname.endswith(f) for f in acceptable_formats):
+                self.ground_truth.append(imread(os.path.join(ground_truth_dir, fname), dtype=np.uint16))
+                self.predictions.append(imread(os.path.join(predictions_dir, fname), dtype=np.uint16))
+     
+        assert len(self.ground_truth) == len(self.predictions), "Number of ground truth and prediction files do not match"
+        print(f"Number of images: {len(self.ground_truth)}")
         self.results_dir = results_dir
         self.taus = taus
             
     def seg_stats(self):
-        print(self.ground_truth[0].shape)
-        stats_mse = []
-        stats_mse_name = self.results_dir + '/' + 'mean_squared_error'
-        mse_csv_writer = csv.writer(open(stats_mse_name + '.csv', 'a'))
-        mse_csv_writer.writerow(['mean_squared_error'])
-        stats_ssim = []   
-        stats_ssim_name = self.results_dir + '/' + 'structural_similarity_index'
-        ssim_csv_writer = csv.writer(open(stats_ssim_name + '.csv', 'a'))
-        ssim_csv_writer.writerow(['structural_similarity_index'])
+        
 
-        stats = []
         for i in tqdm(range(len(self.ground_truth))):
-            stats.extend([matching_dataset(self.ground_truth[i], self.predictions[i], thresh = t, show_progress = False) for t in tqdm(self.taus)])  
+                assert self.ground_truth[i].shape == self.predictions[i].shape, "Images could not be resized properly"
 
-        fig, (ax1,ax2) = plt.subplots(1,2, figsize=(25,10))
+                stats = [matching_dataset(self.ground_truth[i], self.predictions[i], thresh=t, show_progress=False) for t in tqdm(self.taus)]
+                    
 
-        for m in ('precision', 'recall', 'accuracy', 'f1', 'mean_true_score', 'panoptic_quality'):
-            ax1.plot(self.taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
-        ax1.set_xlabel(r'IoU threshold $\tau$')
-        ax1.set_ylabel('Metric value')
-        ax1.grid()
+                fig, (ax1,ax2) = plt.subplots(1,2, figsize=(25,10))
 
-        for m in ('fp', 'tp', 'fn'):
-            ax2.plot(self.taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
-        ax2.set_xlabel(r'IoU threshold $\tau$')
-        ax2.set_ylabel('Number #')
-        ax2.grid()
-        ax2.legend()
-        plt.show()
-        plt.savefig(self.results_dir + f'metrics_{i}.png', dpi=300)
+                for m in ('precision', 'recall', 'accuracy', 'f1', 'mean_true_score', 'panoptic_quality'):
+                    ax1.plot(self.taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
+                ax1.set_xlabel(r'IoU threshold $\tau$')
+                ax1.set_ylabel('Metric value')
+                ax1.grid()
+                ax1.legend() 
+                for m in ('fp', 'tp', 'fn'):
+                    ax2.plot(self.taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
+                ax2.set_xlabel(r'IoU threshold $\tau$')
+                ax2.set_ylabel('Number #')
+                ax2.grid()
+                ax2.legend()
+                plt.show()
+                plt.savefig(self.results_dir + f'metrics_{i}.png', dpi=300)
         
         
-        
-        for i in range(len(self.predictions)):
-            mse_score = mse(self.ground_truth[i]> 0, self.predictions[i] > 0  )
-            stats_mse.append(mse_score)
-            mse_csv_writer.writerow([mse_score]) 
-            
-        
-        for i in range(len(self.predictions)):
-            ssim_score = ssim(self.ground_truth[i] > 0, self.predictions[i] > 0  )
-            stats_ssim.append(ssim_score)
-            ssim_csv_writer.writerow([ssim_score]) 
-        
-        df = pd.DataFrame(list(zip(stats_mse )), index = None,
-                                                    columns =["mean_squared_error"])
-        sns.set(style="whitegrid")
-        g = sns.violinplot(data=df, orient ='v')
-        fig = g.get_figure()
-        plt.show()
-        fig.savefig(self.results_dir  + f"mean_squared_error_{i}.png", dpi=300)
-        
-        df = pd.DataFrame(list(zip(stats_ssim )), index = None,
-                                                    columns =["structural_similarity_index"])
-        sns.set(style="whitegrid")
-        g = sns.violinplot(data=df, orient ='v')
-        fig = g.get_figure()
-        plt.show()
-        fig.savefig(self.results_dir  + f"structural_similarity_index_{i}.png", dpi=300)
-
-        return df
+      
 
 
 """
