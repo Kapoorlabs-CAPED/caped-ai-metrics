@@ -43,30 +43,59 @@ class SegmentationScore:
         self.taus = taus
             
     def seg_stats(self):
-        
 
+
+
+
+        all_stats = []
+
+        # Iterate over each image pair
         for i in tqdm(range(len(self.ground_truth))):
-                assert self.ground_truth[i].shape == self.predictions[i].shape, "Images could not be resized properly"
+            assert self.ground_truth[i].shape == self.predictions[i].shape, "Images could not be resized properly"
+            
+            # Calculate statistics for the current image pair
+            stats = [matching_dataset(self.ground_truth[i], self.predictions[i], thresh=t, show_progress=False) for t in tqdm(self.taus)]
+            
+            # Append the statistics to the list
+            all_stats.append(stats)
 
-                stats = [matching_dataset(self.ground_truth[i], self.predictions[i], thresh=t, show_progress=False) for t in tqdm(self.taus)]
-                    
+        # Create a figure with subplots
+        fig, axes = plt.subplots(2, 1, figsize=(15, 15))
 
-                fig, (ax1,ax2) = plt.subplots(1,2, figsize=(25,10))
+        # Plot metrics
+        for m in ('precision', 'recall', 'accuracy', 'f1', 'mean_true_score', 'panoptic_quality'):
+            mean_stats = []
+            for stats in all_stats:
+               
+                mean_stats.append( [s._asdict()[m] for s in stats])
+            
+            mean_stats = np.mean(mean_stats, axis=0)
+            axes[0].plot(self.taus, mean_stats, '.-', lw=2, label=m)
 
-                for m in ('precision', 'recall', 'accuracy', 'f1', 'mean_true_score', 'panoptic_quality'):
-                    ax1.plot(self.taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
-                ax1.set_xlabel(r'IoU threshold $\tau$')
-                ax1.set_ylabel('Metric value')
-                ax1.grid()
-                ax1.legend() 
-                for m in ('fp', 'tp', 'fn'):
-                    ax2.plot(self.taus, [s._asdict()[m] for s in stats], '.-', lw=2, label=m)
-                ax2.set_xlabel(r'IoU threshold $\tau$')
-                ax2.set_ylabel('Number #')
-                ax2.grid()
-                ax2.legend()
-                plt.show()
-                plt.savefig(self.results_dir + f'metrics_{i}.png', dpi=300)
+        axes[0].set_xlabel(r'IoU threshold $\tau$')
+        axes[0].set_ylabel('Metric value')
+        axes[0].grid()
+        axes[0].legend()
+
+        # Plot number statistics
+        for m in ('fp', 'tp', 'fn'):
+            mean_stats = []
+            for stats in all_stats:
+                mean_stats.append( [s._asdict()[m] for s in stats])
+
+            mean_stats = np.mean(mean_stats, axis=0) 
+            axes[1].plot(self.taus, mean_stats, '.-', lw=2, label=m)
+
+        axes[1].set_xlabel(r'IoU threshold $\tau$')
+        axes[1].set_ylabel('Number #')
+        axes[1].grid()
+        axes[1].legend()
+
+        # Save and show the plot
+        plt.tight_layout()
+        plt.savefig(self.results_dir + 'metrics_combined.png', dpi=300)
+        
+        plt.show()       
         
         
       
