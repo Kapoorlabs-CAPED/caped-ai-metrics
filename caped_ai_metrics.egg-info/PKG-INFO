@@ -1,6 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: caped-ai-metrics
-Version: 1.2.1
+Version: 1.2.2
 Summary: Metric computation toolkit for segmentation and classification tasks
 Author: Varun Kapoor
 Author-email: randomaccessiblekapoor@gmail.com
@@ -12,6 +12,13 @@ Classifier: Programming Language :: Python
 Classifier: Programming Language :: Python :: 3.9
 Description-Content-Type: text/markdown
 License-File: LICENSE.txt
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: license-file
+Dynamic: summary
 
 # caped-ai-metrics
 Metrics for segmentation and classification

@@ -1,18 +1,17 @@
 from scipy import spatial
 import pandas as pd
 import numpy as np
-from skimage import measure 
 from stardist.matching import matching_dataset
 from tqdm import tqdm
 from pathlib import Path
 import matplotlib.pyplot as plt
-import csv
 from tifffile import imread
-from skimage.metrics import structural_similarity as ssim
-from skimage.metrics import  normalized_root_mse as mse
 import seaborn as sns
 from natsort import natsorted
+from scipy.optimize import linear_sum_assignment
 import os
+
+
 class SegmentationScore:
     """
     ground_truth: Input the directory contianing the ground truth label tif files
@@ -97,188 +96,89 @@ class SegmentationScore:
         
         plt.show()       
         
-        
-      
-
-
-"""
-predictions: csv file of predictions as a list for different models
-
-groundtruth: csv file of ground truth as a list of TZYX co ordinates (approx/exact centroids)
-
-
-thresholdscore: veto for score to count true, false positives and false negatives
-
-thresholdspace: tolerance for veto in space
-
-thresholdtime: tolerance for veto in time
-"""
 class ClassificationScore:
-    
-    def __init__(self, 
-                 predictions: str, 
-                 groundtruth: str, 
-                 thresholdscore: float = 1 -  1.0E-8,  
-                 thresholdspace: int = 20, 
-                 thresholdtime: int = 2, 
+    """
+    pred_csv:     Path to one CSV of predicted centroids (T, Z, Y, X[, score])
+    gt_csv:       Path to ground truth CSV (T, Z, Y, X)
+    score_thresh: Minimum score to include a prediction
+    space_thresh: Max spatial distance (units) for a match
+    time_thresh:  Max temporal distance (frames) for a match
+    metric:       'Euclid' or 'Manhattan'
+    ignore_z:     If True, ignore the Z coordinate
+    """
+    def __init__(self,
+                 pred_csv: str,
+                 gt_csv: str,
+                 score_thresh: float = 1.0 - 1.0e-6,
+                 space_thresh: float = 20,
+                 time_thresh: int = 2,
                  metric: str = 'Euclid',
-                 ignorez: bool = False):
+                 ignore_z: bool = False):
+        self.pred_path = Path(pred_csv)
+        self.pred_df = pd.read_csv(pred_csv)
+        self.gt_pts  = pd.read_csv(gt_csv).iloc[:, :4].values.astype(int)
+        self.score_thresh = score_thresh
+        self.space_thresh = space_thresh
+        self.time_thresh  = time_thresh
+        self.metric       = metric
+        self.ignore_z     = ignore_z
 
-         #A list of all the prediction csv files, path object
-         if isinstance(predictions, str):
-             self.predictions = [Path(predictions)]
-         else:
-             self.predictions = list(Path(predictions).glob('*.csv')) 
-           
-         #Approximate locations of the ground truth, Z co ordinate wil be ignored
-         self.groundtruth = groundtruth
-         self.thresholdscore = thresholdscore
-         self.thresholdspace = thresholdspace 
-         self.thresholdtime = thresholdtime
-         self.ignorez = ignorez
-         self.metric = metric
-         self.location_pred = []
-         self.location_gt = []
-
-         self.dicttree = {}
-
- 
-             
+    def _timed_distance(self, a, b):
+        # a, b are [T, Z, Y, X]
+        if self.ignore_z:
+            diffs = a[2:] - b[2:]
+        else:
+            diffs = a[1:] - b[1:]
+        if self.metric == 'Manhattan':
+            sd = np.abs(diffs).sum()
+        else:
+            sd = np.linalg.norm(diffs)
+        td = abs(int(a[0]) - int(b[0]))
+        return sd, td
 
     def model_scorer(self):
+        # filter by score if present
+        df = self.pred_df.copy()
+        if df.shape[1] > 4:
+            df = df[df.iloc[:,4] >= self.score_thresh]
+        pred_pts = df.iloc[:, :4].values.astype(int)
 
-         
-         Name = []
-         TP = []
-         FP = []
-         FN = []
-         GT = []
-         Precision = []
-         Recall = []
-         F1 = []
-         Pred = []
-         columns = ['Model Name', 'True Positive', 'False Positive', 'False Negative', 'Total Predictions', 'GT predictions', 'Precision', 'Recall', 'F1']
-         
+        # Build KD-trees
+        gt_tree   = spatial.cKDTree(self.gt_pts)
+        pred_tree = spatial.cKDTree(pred_pts) if len(pred_pts)>0 else None
 
-         dataset_gt  = pd.read_csv(self.groundtruth, delimiter = ',')
-         self.location_gt = dataset_gt.iloc[:, :4].astype(int).values.tolist() 
-                 
-        
-         for csv_pred in self.predictions:
-            self.location_pred = []
-            self.listtime_pred = []
-            self.listy_pred = []
-            self.listx_pred = []
-            self.listscore_pred = []
-            self.csv_pred = csv_pred
-            name = self.csv_pred.stem
-            dataset_pred  = pd.read_csv(self.csv_pred, delimiter = ',')
-            
-            for index, row in dataset_pred.iterrows():
-                T_pred = int(row.iloc[0])
-                current_point = (row.iloc[1], row.iloc[2], row.iloc[3])
-                score = row.iloc[4] if len(row) > 4 else 1
-                
-                if score >= float(self.thresholdscore): 
-                    self.location_pred.append([int(T_pred), int(row.iloc[1]), int(row.iloc[2]), int(row.iloc[3])])
-                    self.listtime_pred.append(int(T_pred))   
-                       
-            tp, fn, fp, pred, gt = self._TruePositives()
-            
-            Name.append(name)
-            TP.append(tp)
-            FN.append(fn)
-            FP.append(fp)
-            GT.append(gt)
-            Pred.append(pred)
-            precision = tp/(tp + fp) if (tp + fp) > 0 else 0
-            recall = tp/(tp + fn) if (tp + fn) > 0 else 0
-            Precision.append(precision)
-            Recall.append(recall)
-            F1.append(2 * (precision * recall)/(precision + recall))
+        # Count TP / FP
+        tp = fp = 0
+        for p in pred_pts:
+            dist, idx = gt_tree.query(p)
+            sd, td = self._timed_distance(p, self.gt_pts[idx])
+            if sd <= self.space_thresh and td <= self.time_thresh:
+                tp += 1
+            else:
+                fp += 1
 
-         data = list(zip(Name, TP, FP, FN, Pred, GT, Precision, Recall, F1))
-         data = sorted(data, key = lambda x: x[-2])
-         df = pd.DataFrame(data, columns=columns)
-         df.to_csv(str(self.csv_pred.parent) + '_model_accuracy' + '.csv')
-         return df
+        # Count FN
+        fn = 0
+        if pred_tree is not None:
+            for g in self.gt_pts:
+                dist, idx = pred_tree.query(g)
+                sd, td = self._timed_distance(g, pred_pts[idx])
+                if sd > self.space_thresh or td > self.time_thresh:
+                    fn += 1
+        else:
+            fn = len(self.gt_pts)
 
-     
+        # Metrics
+        precision = tp / (tp + fp) if (tp + fp)>0 else 0.0
+        recall    = tp / (tp + fn) if (tp + fn)>0 else 0.0
+        f1        = 2*precision*recall/(precision+recall) if (precision+recall)>0 else 0.0
 
-    def _TruePositives(self):
-
-            tp = 0
-            fp = 0
-            tree = spatial.cKDTree(self.location_gt)
-            for i in range(len(self.location_pred)):
-                
-                return_index = self.location_pred[i]
-                closestpoint = tree.query(return_index)
-                spacedistance, timedistance = _TimedDistance(return_index, self.location_gt[closestpoint[1]], self.metric, self.ignorez)
-                    
-                if spacedistance < self.thresholdspace and timedistance < self.thresholdtime:
-                        tp  = tp + 1
-                else:
-                        fp = fp + 1        
-            tp = tp 
-            fp = fp 
-            fn = self._FalseNegatives()
-            return tp, fn, fp, len(self.location_pred), len(self.location_gt)
-        
-
-    def _FalseNegatives(self):
-        
-                        tree = spatial.cKDTree(self.location_pred)
-                        fn = 0
-                        for i in range(len(self.location_gt)):
-                            
-                            return_index = (int(self.location_gt[i][0]),int(self.location_gt[i][1]),
-                                            int(self.location_gt[i][2]), int(self.location_gt[i][3]))
-                            closestpoint = tree.query(return_index)
-                            spacedistance, timedistance = _TimedDistance(return_index, self.location_pred[closestpoint[1]], self.metric, self.ignorez)
-
-                            if spacedistance > self.thresholdspace or timedistance > self.thresholdtime:
-                                    fn  = fn + 1
-                        fn = fn
-                        return fn
-                    
-                                
-def _EuclidMetric(x: float,y: float):
-    
-    return (x - y) * (x - y) 
-
-def _MannhatanMetric(x: float,y: float):
-    
-    return np.abs(x - y)
-
-def _EuclidSum(func):
-    
-    return float(np.sqrt( np.sum(func)))
-
-def _ManhattanSum(func):
-    
-    return float(np.sum(func))
-
-def _general_dist_func(metric, ignorez: bool):
-     
-     if ignorez:
-         start_dim = 2
-     else:
-         start_dim = 1    
-     return lambda x,y : [metric(x[i], y[i]) for i in range(start_dim,len(x))]
- 
-def _TimedDistance(pointA: tuple, pointB: tuple, metric, ignorez: bool):
-     
-     if metric == 'Euclid':
-        dist_func = _general_dist_func(_EuclidMetric, ignorez)
-        spacedistance = _EuclidSum(dist_func(pointA, pointB))
-     if metric == 'Manhattan':
-        dist_func = _general_dist_func(_MannhatanMetric, ignorez)
-        spacedistance = _ManhattanSum(dist_func(pointA, pointB))    
-     else:
-        dist_func = _general_dist_func(_EuclidMetric, ignorez)
-        spacedistance = _EuclidSum(dist_func(pointA, pointB))   
-     
-     timedistance = float(np.abs(pointA[0] - pointB[0]))
-     
-     return spacedistance, timedistance
+        # Output
+        result = pd.DataFrame([{
+            'Model': self.pred_path.stem,
+            'TP': tp, 'FP': fp, 'FN': fn,
+            'Precision': precision, 'Recall': recall, 'F1': f1
+        }])
+        out_csv = self.pred_path.with_name(f"{self.pred_path.stem}_accuracy.csv")
+        result.to_csv(out_csv, index=False)
+        return result
