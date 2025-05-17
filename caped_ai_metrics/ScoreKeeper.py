@@ -158,15 +158,9 @@ class ClassificationScore:
                 fp += 1
 
         # Count FN
-        fn = 0
-        if pred_tree is not None:
-            for g in self.gt_pts:
-                dist, idx = pred_tree.query(g)
-                sd, td = self._timed_distance(g, pred_pts[idx])
-                if sd > self.space_thresh or td > self.time_thresh:
-                    fn += 1
-        else:
-            fn = len(self.gt_pts)
+        fn = len(self.gt_pts) - tp
+
+       
 
         # Metrics
         precision = tp / (tp + fp) if (tp + fp)>0 else 0.0
